@@ -1,53 +1,52 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
-
-from schemas import UserCreate, User
-from core.security import verify_password, get_password_hash, create_access_token, decode_access_token
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+from schemas import UserCreateRequest, UserCreateResponse, UserCreate
+from core.security import get_password_hash, verify_password, create_access_token, decode_access_token
 from crud import create_user, get_user_by_loginId
 from database import get_db
 
 router = APIRouter()
 
-@router.post("/signup", response_model=User)
-def signup(user: UserCreate, db: Session = Depends(get_db)):
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# 회원가입 기능
+@router.post("/signup", response_model=UserCreateResponse, status_code=status.HTTP_201_CREATED)
+async def signup(request: Request, db: Session = Depends(get_db)):
+    try:
+        user = await request.json()
+        user = UserCreateRequest(**user)
+    except ValidationError as e:
+        error_messages = e.errors()
+        first_error = error_messages[0]
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"errorMessage": f"{first_error['loc'][0]} is a required field."}
+        )
     db_user = get_user_by_loginId(db, user.loginId)
     if db_user:
-        raise HTTPException(status_code=400, detail="Login ID already registered")
-    user.password = get_password_hash(user.password)
-    return create_user(db, user)
-
-@router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = get_user_by_loginId(db, form_data.username)
-    if not user or not verify_password(form_data.password, user.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="loginId is already in use.")
+    
+    try:
+        user_data = UserCreate(
+            loginId=user.loginId,
+            password=get_password_hash(user.password),
+            username=user.name,
+            disabilities=user.disabilities
         )
-    access_token_expires = timedelta(minutes=30)
-    access_token = create_access_token(
-        data={"sub": user.loginId}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@router.post("/token-refresh")
-def refresh_token(token: str):
-    payload = decode_access_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    new_token = create_access_token(data={"sub": payload["sub"]})
-    return {"access_token": new_token, "token_type": "bearer"}
-
-@router.get("/check-username")
-def check_username(loginId: str, db: Session = Depends(get_db)):
-    user = get_user_by_loginId(db, loginId)
-    if user:
-        return {"is_available": False}
-    return {"is_available": True}
-
-@router.post("/logout")
-def logout():
-    return {"message": "Logged out successfully"}
+        db_user = create_user(db, user_data)
+        
+        return UserCreateResponse(
+            name=db_user.username,
+            message="Registration successful",
+            userId=db_user.userId
+        )
+    except Exception as e:
+        logger.error(f"Error occurred while creating user: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error.")

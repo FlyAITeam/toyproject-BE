@@ -6,10 +6,10 @@ from database import Base
 class User(Base):
     __tablename__ = 'user'
     
-    userId = Column(Integer, primary_key=True)
-    loginId = Column(String(20), unique=True)
-    password = Column(String(255))
-    username = Column(String(100), unique=True)
+    userId = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    loginId = Column(String(20), unique=True, nullable=False)
+    password = Column(String(255), nullable=False)
+    username = Column(String(100), unique=True, nullable=False)
     
     disabilities = relationship("Disability", back_populates="disabilityUser")
     images = relationship("Image", back_populates="imageUser")
@@ -18,7 +18,7 @@ class User(Base):
 class Reform(Base):
     __tablename__ = 'reformGuide'
     
-    guideId = Column(Integer, primary_key=True)
+    guideId = Column(Integer, primary_key=True, index=True, autoincrement=True)
     reformType = Column(String(100), nullable=False)
     cloth = Column(String(500), nullable=False)
     target = Column(String(500), nullable=False)
@@ -33,7 +33,7 @@ class Reform(Base):
 class Log(Base):
     __tablename__ = 'log'
     
-    logId = Column(Integer, primary_key=True)
+    logId = Column(Integer, primary_key=True, index=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('user.userId'))
     imageId = Column(Integer, ForeignKey('image.imageId'))
     guideId = Column(Integer, ForeignKey('reformGuide.guideId'))
@@ -45,7 +45,7 @@ class Log(Base):
 class Image(Base):
     __tablename__ = 'image'
     
-    imageId = Column(Integer, primary_key=True)
+    imageId = Column(Integer, primary_key=True, index=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('user.userId'))
     fileName = Column(String(255), nullable=False)
     contentType = Column(String(128), nullable=False)
@@ -57,7 +57,7 @@ class Image(Base):
 class Disability(Base):
     __tablename__ = 'disability'
     
-    disabilityId = Column(Integer, primary_key=True)
+    disabilityId = Column(Integer, primary_key=True, index=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('user.userId'))
     obstacle = Column(String(255), nullable=False)
     

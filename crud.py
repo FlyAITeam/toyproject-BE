@@ -12,6 +12,12 @@ def create_user(db: Session, user: UserCreate):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+
+    for obstacle in user.disabilities:
+        db_disability = Disability(userId=db_user.userId, obstacle=obstacle)
+        db.add(db_disability)
+    db.commit()
+    
     return db_user
 
 # Read User
