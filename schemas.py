@@ -8,7 +8,19 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    disabilities: List[str]
 
+class UserCreateRequest(BaseModel):
+    loginId: str
+    password: str
+    name: str
+    disabilities: List[str]
+    
+class UserCreateResponse(BaseModel):
+    name: str
+    message: str
+    userId: int
+    
 class User(UserBase):
     userId: int
     disabilities: List["Disability"] = []
