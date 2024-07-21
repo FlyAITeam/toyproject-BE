@@ -30,6 +30,11 @@ class User(UserBase):
     class Config:
         from_attributes = True
         
+# login
+class LoginRequest(BaseModel):
+    loginId: str
+    password: str
+        
 # Reform
 class ReformBase(BaseModel):
     reformType: str

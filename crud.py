@@ -27,9 +27,6 @@ def get_user(db: Session, user_id: int):
 def get_user_by_loginId(db: Session, loginId: str):
     return db.query(User).filter(User.loginId == loginId).first()
 
-def get_users(db: Session, skip: int = 0, limit: int = 10):
-    return db.query(User).offset(skip).limit(limit).all()
-
 # Update User
 def update_user(db: Session, user_id: int, update_data: dict):
     db.query(User).filter(User.userId == user_id).update(update_data)
