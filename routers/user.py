@@ -4,18 +4,10 @@ from schemas import User
 from crud import get_user_by_loginId
 from database import get_db
 from core.security import decode_access_token
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 
 router = APIRouter()
 
-def get_current_user(token: str = Depends(decode_access_token), db: Session = Depends(get_db)):
-    payload = decode_access_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = get_user_by_loginId(db, payload["sub"])
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-@router.get("/me", response_model=User)
-def read_users_me(current_user: User = Depends(get_current_user)):
-    return current_user
+#@router.post("/check-userid", status_code=status.HTTP_200_OK)
+#async def checkUserId(request: Request, db: Session = Depends(get_db)):
+    

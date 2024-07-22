@@ -2,9 +2,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Secret key to encode and decode JWT
-SECRET_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJSb2xlIjoiQWRtaW4iLCJJc3N1ZXIiOiJJc3N1ZXIiLCJVc2VybmFtZSI6IkphdmFJblVzZSIsImV4cCI6MTcyMTMxMzUyOCwiaWF0IjoxNzIxMzEzNTI4fQ.BB0DZo8Pk5c1Vg5aQuG0m3tipPd_WUOFsz-Hlh8ZVBg"
+SECRET_KEY = os.getenv("JWT_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

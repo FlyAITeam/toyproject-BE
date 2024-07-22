@@ -5,7 +5,7 @@ from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-from schemas import UserCreateRequest, UserCreateResponse, UserCreate
+from schemas import UserCreateRequest, UserCreateResponse, UserCreate, LoginRequest
 from core.security import get_password_hash, verify_password, create_access_token, decode_access_token
 from crud import create_user, get_user_by_loginId
 from database import get_db
@@ -24,10 +24,10 @@ async def signup(request: Request, db: Session = Depends(get_db)):
         user = UserCreateRequest(**user)
     except ValidationError as e:
         error_messages = e.errors()
-        first_error = error_messages[0]
+        errors = [item['loc'][0] for item in error_messages]
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={"errorMessage": f"{first_error['loc'][0]} is a required field."}
+            content={"errorMessage": f"{errors} is a required field."}
         )
     db_user = get_user_by_loginId(db, user.loginId)
     if db_user:
@@ -49,4 +49,55 @@ async def signup(request: Request, db: Session = Depends(get_db)):
         )
     except Exception as e:
         logger.error(f"Error occurred while creating user: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error.")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error."}
+        )
+
+# 로그인
+@router.post("/signin", status_code=status.HTTP_200_OK)
+async def signin(request: Request, db: Session = Depends(get_db)):
+    try:
+        credentials = await request.json()
+        credentials = LoginRequest(**credentials)
+    except ValidationError as e:
+        error_messages = e.errors()
+        errors = [item['loc'][0] for item in error_messages]
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"errorMessage": f"{errors} is a required field."}
+        )
+    
+    try:
+        user = get_user_by_loginId(db, credentials.loginId)
+        if not user or not verify_password(credentials.password, user.password):
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"errorMessage": "Login Failed."}
+            )
+        
+        access_token_expires = timedelta(minutes=30)
+        access_token = create_access_token(
+            data={"sub": user.loginId}, expires_delta=access_token_expires
+        )
+        refresh_token_expires = timedelta(days=7)
+        refresh_token = create_access_token(
+            data={"sub": user.loginId}, expires_delta=refresh_token_expires
+        )
+        
+        headers = {
+            "access": access_token,
+            "refresh": refresh_token
+        }
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "Login Success."},
+            headers=headers
+        )
+    
+    except Exception as e:
+        logger.error(f"Error occurred during login: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error."}
+        )
