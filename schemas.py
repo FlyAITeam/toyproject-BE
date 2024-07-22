@@ -30,6 +30,8 @@ class User(UserBase):
     class Config:
         from_attributes = True
         
+class NameUpdateRequest(BaseModel):
+    name: str
 # login
 class LoginRequest(BaseModel):
     loginId: str
@@ -99,3 +101,6 @@ class Disability(DisabilityBase):
 
     class Config:
         from_attributes = True
+        
+class DisabilityUpdateRequest(BaseModel):
+    disabilities: list[str]

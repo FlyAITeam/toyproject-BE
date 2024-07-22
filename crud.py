@@ -28,10 +28,13 @@ def get_user_by_loginId(db: Session, loginId: str):
     return db.query(User).filter(User.loginId == loginId).first()
 
 # Update User
-def update_user(db: Session, user_id: int, update_data: dict):
-    db.query(User).filter(User.userId == user_id).update(update_data)
-    db.commit()
-    return db.query(User).filter(User.userId == user_id).first()
+def update_user_name(db: Session, user_id: int, new_name: str):
+    user = db.query(User).filter(User.userId == user_id).first()
+    if user:
+        user.username = new_name
+        db.commit()
+        return user
+    return None
 
 # Delete User
 def delete_user(db: Session, user_id: int):
@@ -90,10 +93,16 @@ def get_disabilities(db: Session, skip: int = 0, limit: int = 10):
     return db.query(Disability).offset(skip).limit(limit).all()
 
 # Update Disability
-def update_disability(db: Session, disability_id: int, update_data: dict):
-    db.query(Disability).filter(Disability.disabilityId == disability_id).update(update_data)
+def update_user_disabilities(db: Session, user_id: int, disabilities: list[str]):
+    # 기존 장애 목록 삭제
+    db.query(Disability).filter(Disability.userId == user_id).delete()
+    
+    # 새로운 장애 목록 추가
+    for obstacle in disabilities:
+        db_disability = Disability(userId=user_id, obstacle=obstacle)
+        db.add(db_disability)
+    
     db.commit()
-    return db.query(Disability).filter(Disability.disabilityId == disability_id).first()
 
 # Delete Disability
 def delete_disability(db: Session, disability_id: int):
