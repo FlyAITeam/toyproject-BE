@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query, Header
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
@@ -125,6 +125,84 @@ async def check_userid(userid: str = Query(default=None), db: Session = Depends(
     
     except Exception as e:
         logger.error(f"Error occurred during userid check: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error."}
+        )
+        
+# access token 재발행
+@router.post("/refresh", status_code=status.HTTP_200_OK)
+async def refresh_token(refresh: str = Header(None), db: Session = Depends(get_db)):
+    if not refresh:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errorMessage": "Invalid refresh token"}
+        )
+    
+    try:
+        payload = decode_access_token(refresh)
+        if payload is None:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"errorMessage": "Invalid refresh token"}
+            )
+        
+        user = get_user_by_loginId(db, payload["sub"])
+        if user is None:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"errorMessage": "Invalid refresh token"}
+            )
+
+        access_token_expires = timedelta(minutes=30)
+        new_access_token = create_access_token(
+            data={"sub": user.loginId}, expires_delta=access_token_expires
+        )
+        refresh_token_expires = timedelta(days=7)
+        new_refresh_token = create_access_token(
+            data={"sub": user.loginId}, expires_delta=refresh_token_expires
+        )
+        
+        headers = {
+            "access": new_access_token,
+            "refresh": new_refresh_token
+        }
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "Token reissued successfully"},
+            headers=headers
+        )
+    
+    except Exception as e:
+        logger.error(f"Error occurred during token refresh: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error."}
+        )
+
+# 로그아웃
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(access: str = Header(None)):
+    if not access:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errorMessage": "Access token is null."}
+        )
+    
+    try:
+        payload = decode_access_token(access)
+        if payload is None:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"errorMessage": "Access token has expired"}
+            )
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "Logout successful."}
+        )
+    
+    except Exception as e:
+        logger.error(f"Error occurred during logout: {e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error."}
