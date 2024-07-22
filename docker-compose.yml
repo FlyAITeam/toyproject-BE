@@ -1,33 +1,49 @@
 version: '3.8'
 services:
   fastapi:
-    build: .
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command: "uvicorn main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      - DATABASE_URL=postgresql://toy:1104@db:5432/toyproject
     volumes:
-      - ./app:/app
+      - myapp:/app
+    restart: always
+    environment:
+      - DATABASE_URL= 'postgresql://postgres:examplepassword@db:5432/postgres?schema=public'
+    env_file:
+      - .env
+    networks:
+      - postgres-db-network
 
   db:
     image: postgres:15
+    container_name: postgres
     environment:
-      POSTGRES_USER: toy
-      POSTGRES_PASSWORD: 1104
-      POSTGRES_DB: toyproject
+      - POSTGRES_PASSWORD=examplepassword
+      - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     restart: always
+    networks:
+      - postgres-db-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U toy"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
   postgres_data:
+    name: postgres_data
+  myapp:
+
+networks:
+    postgres-db-network:
+        driver: bridge
