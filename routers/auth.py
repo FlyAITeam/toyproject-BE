@@ -108,7 +108,7 @@ async def check_loginid(loginid: str = Query(default=None), db: Session = Depend
     if not loginid:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={"errorMessage": "Userid cannot be null or empty."}
+            content={"errorMessage": "Loginid cannot be null or empty."}
         )
 
     try:
@@ -116,15 +116,15 @@ async def check_loginid(loginid: str = Query(default=None), db: Session = Depend
         if db_user:
             return JSONResponse(
                 status_code=status.HTTP_409_CONFLICT,
-                content={"errorMessage": "Userid is already in use."}
+                content={"errorMessage": "Loginid is already in use."}
             )
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"message": "Userid is available"}
+            content={"message": "Loginid is available"}
         )
     
     except Exception as e:
-        logger.error(f"Error occurred during userid check: {e}")
+        logger.error(f"Error occurred during loginid check: {e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error."}
