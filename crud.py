@@ -47,8 +47,8 @@ def create_image(db: Session, image: ImageCreate, user_id: int):
     db_image = Image(
         userId=user_id,
         fileName=image.fileName,
-        contentType=image.contentType,
-        path=image.path
+        path=image.path,
+        contentType=image.contentType
     )
     db.add(db_image)
     db.commit()
@@ -61,18 +61,6 @@ def get_image(db: Session, image_id: int):
 
 def get_images(db: Session, skip: int = 0, limit: int = 10):
     return db.query(Image).offset(skip).limit(limit).all()
-
-# Update Image
-def update_image(db: Session, image_id: int, update_data: dict):
-    db.query(Image).filter(Image.imageId == image_id).update(update_data)
-    db.commit()
-    return db.query(Image).filter(Image.imageId == image_id).first()
-
-# Delete Image
-def delete_image(db: Session, image_id: int):
-    db.query(Image).filter(Image.imageId == image_id).delete()
-    db.commit()
-    return {"message": "Image deleted successfully"}
 
 # Create Disability
 def create_disability(db: Session, disability: DisabilityCreate, user_id: int):
@@ -92,24 +80,6 @@ def get_disability(db: Session, disability_id: int):
 def get_disabilities(db: Session, skip: int = 0, limit: int = 10):
     return db.query(Disability).offset(skip).limit(limit).all()
 
-# Update Disability
-def update_user_disabilities(db: Session, user_id: int, disabilities: list[str]):
-    # 기존 장애 목록 삭제
-    db.query(Disability).filter(Disability.userId == user_id).delete()
-    
-    # 새로운 장애 목록 추가
-    for obstacle in disabilities:
-        db_disability = Disability(userId=user_id, obstacle=obstacle)
-        db.add(db_disability)
-    
-    db.commit()
-
-# Delete Disability
-def delete_disability(db: Session, disability_id: int):
-    db.query(Disability).filter(Disability.disabilityId == disability_id).delete()
-    db.commit()
-    return {"message": "Disability deleted successfully"}
-
 # Create Log
 def create_log(db: Session, log: LogCreate, user_id: int, image_id: int, guide_id: int):
     db_log = Log(
@@ -122,6 +92,18 @@ def create_log(db: Session, log: LogCreate, user_id: int, image_id: int, guide_i
     db.refresh(db_log)
     return db_log
 
+# Update Disability
+def update_user_disabilities(db: Session, user_id: int, disabilities: list[str]):
+    # 기존 장애 목록 삭제
+    db.query(Disability).filter(Disability.userId == user_id).delete()
+    
+    # 새로운 장애 목록 추가
+    for obstacle in disabilities:
+        db_disability = Disability(userId=user_id, obstacle=obstacle)
+        db.add(db_disability)
+    
+    db.commit()
+    
 # Read Log
 def get_log(db: Session, log_id: int):
     return db.query(Log).filter(Log.logId == log_id).first()
@@ -129,26 +111,11 @@ def get_log(db: Session, log_id: int):
 def get_logs(db: Session, skip: int = 0, limit: int = 10):
     return db.query(Log).offset(skip).limit(limit).all()
 
-# Update Log
-def update_log(db: Session, log_id: int, update_data: dict):
-    db.query(Log).filter(Log.logId == log_id).update(update_data)
-    db.commit()
-    return db.query(Log).filter(Log.logId == log_id).first()
-
-# Delete Log
-def delete_log(db: Session, log_id: int):
-    db.query(Log).filter(Log.logId == log_id).delete()
-    db.commit()
-    return {"message": "Log deleted successfully"}
-
 # Create Reform
 def create_reform(db: Session, reform: ReformCreate):
     db_reform = Reform(
         reformType=reform.reformType,
         cloth=reform.cloth,
-        target=reform.target,
-        trim=reform.trim,
-        description=reform.description,
         fileName=reform.fileName,
         contentType=reform.contentType,
         path=reform.path
@@ -164,15 +131,3 @@ def get_reform(db: Session, guide_id: int):
 
 def get_reforms(db: Session, skip: int = 0, limit: int = 10):
     return db.query(Reform).offset(skip).limit(limit).all()
-
-# Update Reform
-def update_reform(db: Session, guide_id: int, update_data: dict):
-    db.query(Reform).filter(Reform.guideId == guide_id).update(update_data)
-    db.commit()
-    return db.query(Reform).filter(Reform.guideId == guide_id).first()
-
-# Delete Reform
-def delete_reform(db: Session, guide_id: int):
-    db.query(Reform).filter(Reform.guideId == guide_id).delete()
-    db.commit()
-    return {"message": "Reform deleted successfully"}

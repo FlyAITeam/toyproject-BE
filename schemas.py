@@ -41,9 +41,6 @@ class LoginRequest(BaseModel):
 class ReformBase(BaseModel):
     reformType: str
     cloth: str
-    target: str
-    trim: str
-    description: str
     fileName: str
     contentType: str
     path: str
