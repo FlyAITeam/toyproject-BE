@@ -7,8 +7,14 @@ from schemas import ReformCreate, ImageCreate, LogCreate
 from crud import create_image, create_reform, create_log, get_user_by_loginId
 from database import get_db
 from core.security import decode_access_token
+import torch
+from ultralytics import YOLO
 
 router = APIRouter()
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# 모델 로드
+model = YOLO("./routers/best.pt").to(device)
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -50,9 +56,14 @@ async def create_reform_guide(
         new_image = create_image(db, image_data, user_id)
         
         # yolo 모델 사용 코드 --------------------------------
-        
-        
-        cloth_type = "detected_cloth_type"
+        results = model.predict(data=image)
+        for result in results:
+            boxes = result.boxes.data.cpu().numpy()
+            for box in boxes:
+                x1, y1, x2, y2, score, class_id = box
+                class_name = model.names[int(class_id)]
+                logger.debug(f"Detected {class_name} with confidence {score:.2f}")
+                cloth_type = class_name
         # ----------------------------------------------------
         
         # 리폼 가이드 생성
