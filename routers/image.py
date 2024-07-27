@@ -9,6 +9,8 @@ from database import get_db
 from core.security import decode_access_token
 import torch
 from ultralytics import YOLO
+from PIL import Image
+import io
 
 router = APIRouter()
 
@@ -57,10 +59,13 @@ async def create_reform_guide(
             )
         
         try:
+            # 이미지 데이터 읽기
+            image_bytes = await image.read()
+
             # 이미지 저장 경로 설정
             file_location = f"images/{image.filename}"
             with open(file_location, "wb") as file:
-                file.write(await image.read())
+                file.write(image_bytes)
         except Exception as e:
             logger.error(f"Error occurred while saving the image: {e}")
             return JSONResponse(
@@ -83,17 +88,16 @@ async def create_reform_guide(
                 content={"errorMessage": "Error while saving image information to the DB."}
             )
         
-        
-        
         try:
             # yolo 모델 사용 코드 --------------------------------
-            results = model.predict(data=image)
+            image_pil = Image.open(io.BytesIO(image_bytes))
+            results = model.predict(image_pil)
             for result in results:
                 boxes = result.boxes.data.cpu().numpy()
                 for box in boxes:
                     x1, y1, x2, y2, score, class_id = box
                     class_name = model.names[int(class_id)]
-                    print(class_name, score)
+                    print(f"Detected {class_name} with confidence {score:.2f}. filename: {image.filename}")
                     logger.debug(f"Detected {class_name} with confidence {score:.2f}")
                     cloth_type = class_name
             # ----------------------------------------------------
