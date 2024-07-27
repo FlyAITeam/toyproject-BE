@@ -19,13 +19,10 @@ class Reform(Base):
     __tablename__ = 'reformGuide'
     
     guideId = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    reformType = Column(String(100), nullable=False)
+    reformType = Column(String(500), nullable=False)
     cloth = Column(String(500), nullable=False)
-    target = Column(String(500), nullable=False)
-    trim = Column(String(500), nullable=False)
-    description = Column(String(500), nullable=False)
     fileName = Column(String(255), nullable=False)
-    contentType = Column(String(128), nullable=False)
+    contentType = Column(String(255), nullable=False)
     path = Column(String(255), nullable=False)
     
     reformLog = relationship("Log", back_populates="logReform")
@@ -48,9 +45,8 @@ class Image(Base):
     imageId = Column(Integer, primary_key=True, index=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('user.userId'))
     fileName = Column(String(255), nullable=False)
-    contentType = Column(String(128), nullable=False)
     path = Column(String(255), nullable=False)
-    
+    contentType = Column(String(128), nullable=False)
     imageUser = relationship("User", back_populates="images")
     imageLog = relationship("Log", back_populates="logImage")
     
