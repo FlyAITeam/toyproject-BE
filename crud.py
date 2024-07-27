@@ -111,6 +111,9 @@ def get_log(db: Session, log_id: int):
 def get_logs(db: Session, skip: int = 0, limit: int = 10):
     return db.query(Log).offset(skip).limit(limit).all()
 
+def get_user_logs(db: Session, user_id: int):
+    return db.query(Log).filter(Log.userId == user_id).all()
+
 # Create Reform
 def create_reform(db: Session, reform: ReformCreate):
     db_reform = Reform(
