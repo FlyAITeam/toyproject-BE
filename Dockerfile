@@ -2,6 +2,13 @@ FROM python:3.9.19-slim
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    ffmpeg \
+    libsm6 \
+    libxext6 \ 
+    libglib2.0-0
+
 # requirements.txt 파일을 컨테이너의 /app 디렉토리로 복사
 COPY requirements.txt /app
 

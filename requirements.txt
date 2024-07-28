@@ -38,9 +38,11 @@ SQLAlchemy==2.0.31
 starlette==0.37.2
 tqdm==4.66.4
 typer==0.12.3
+torch
 typing_extensions==4.12.2
 ujson==5.10.0
 uvicorn==0.30.3
 uvloop==0.19.0
+ultralytics
 watchfiles==0.22.0
 websockets==12.0

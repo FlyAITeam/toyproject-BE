@@ -9,6 +9,8 @@ from database import get_db
 from core.security import decode_access_token
 import torch
 from ultralytics import YOLO
+from PIL import Image
+import io
 
 router = APIRouter()
 
@@ -32,57 +34,111 @@ async def create_reform_guide(
             content={"errorMessage": "Access token is null."}
         )
     try:
-        # Access token 검증
-        payload = decode_access_token(access)
-        if payload is None:
+        try:
+            # Access token 검증
+            payload = decode_access_token(access)
+            if payload is None:
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"errorMessage": "Invalid access token"}
+                )
+        except Exception as e:
+            logger.error(f"Error occurred during token verification: {e}")
             return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"errorMessage": "Invalid access token"}
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Error during token verification."}
+            )
+
+        try:
+            user_id = get_user_by_loginId(db, payload["sub"]).userId
+        except Exception as e:
+            logger.error(f"Error occurred while fetching user by loginId: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Error while fetching user information."}
             )
         
-        user_id = get_user_by_loginId(db, payload["sub"]).userId
-        # 이미지 저장 경로 설정
-        file_location = f"images/{image.filename}"
-        with open(file_location, "wb") as file:
-            file.write(await image.read())
+        try:
+            # 이미지 데이터 읽기
+            image_bytes = await image.read()
+
+            # 이미지 저장 경로 설정
+            file_location = f"images/{image.filename}"
+            with open(file_location, "wb") as file:
+                file.write(image_bytes)
+        except Exception as e:
+            logger.error(f"Error occurred while saving the image: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Error while saving the image."}
+            )
+
+        try:
+            # 이미지 정보 DB에 저장
+            image_data = ImageCreate(
+                fileName=image.filename,
+                contentType=image.content_type,
+                path=file_location
+            )
+            new_image = create_image(db, image_data, user_id)
+        except Exception as e:
+            logger.error(f"Error occurred while saving image information to the DB: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Error while saving image information to the DB."}
+            )
         
-        # 이미지 정보 DB에 저장
-        image_data = ImageCreate(
-            fileName=image.filename,
-            contentType=image.content_type,
-            path=file_location
-        )
+        try:
+            # yolo 모델 사용 코드 --------------------------------
+            image_pil = Image.open(io.BytesIO(image_bytes))
+            results = model.predict(image_pil)
+            for result in results:
+                boxes = result.boxes.data.cpu().numpy()
+                for box in boxes:
+                    x1, y1, x2, y2, score, class_id = box
+                    class_name = model.names[int(class_id)]
+                    print(f"Detected {class_name} with confidence {score:.2f}. filename: {image.filename}")
+                    logger.debug(f"Detected {class_name} with confidence {score:.2f}")
+                    cloth_type = class_name
+            # ----------------------------------------------------
+        except Exception as e:
+            logger.error(f"Error occurred while running YOLO model: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Error while running YOLO model."}
+            )
         
-        new_image = create_image(db, image_data, user_id)
+        try:
+            # 리폼 가이드 생성
+            reform_data = ReformCreate(
+                reformType="example_reform_type",
+                cloth=cloth_type,
+                fileName=image.filename,
+                contentType=image.content_type,
+                path=file_location
+            )
+            new_reform = create_reform(db, reform_data)
+        except Exception as e:
+            logger.error(f"Error occurred while creating reform guide: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Error while creating reform guide."}
+            )
         
-        # yolo 모델 사용 코드 --------------------------------
-        results = model.predict(data=image)
-        for result in results:
-            boxes = result.boxes.data.cpu().numpy()
-            for box in boxes:
-                x1, y1, x2, y2, score, class_id = box
-                class_name = model.names[int(class_id)]
-                logger.debug(f"Detected {class_name} with confidence {score:.2f}")
-                cloth_type = class_name
-        # ----------------------------------------------------
-        
-        # 리폼 가이드 생성
-        reform_data = ReformCreate(
-            reformType="example_reform_type",
-            cloth=cloth_type,
-            fileName=image.filename,
-            contentType=image.content_type,
-            path=file_location
-        )
-        new_reform = create_reform(db, reform_data)
-        
-        # 로그 정보 DB에 저장
-        log_data = LogCreate(
-            userId=user_id,
-            imageId=new_image.imageId,
-            guideId=new_reform.guideId
-        )
-        new_log = create_log(db, log_data, user_id, new_image.imageId, new_reform.guideId)
+        try:
+            # 로그 정보 DB에 저장
+            log_data = LogCreate(
+                userId=user_id,
+                imageId=new_image.imageId,
+                guideId=new_reform.guideId
+            )
+            new_log = create_log(db, log_data, user_id, new_image.imageId, new_reform.guideId)
+        except Exception as e:
+            logger.error(f"Error occurred while saving log information to the DB: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Error while saving log information to the DB."}
+            )
         
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
